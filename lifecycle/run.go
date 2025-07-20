@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -22,18 +23,19 @@ var rte = make(chan error, 1)
 //
 // This function will:
 //
-// 1. Run startup function sequentially up to the startupMaxDur duration.
+// 1. Run startup function sequentially up to the startupMaxDur duration. Order matters. If a process depends on another, keep that order in mind since these run in order.
 //   - If any of these functions returns an error, this function will return immediately.
 //
 // 2. Block until an OS shutdown signal (ie ctrl+c) or runtime error (ie your code calls runtimeErr(yourError)) is received.
 //   - Only the first runtime error received (if any) will be returned. All others are discarded.
+//   - Signals monitored are SIGINT and SIGTERM
 //
 // 3. Run the shutdown functions sequentially up to the shutdownMaxDur duration.
-func Start(startupMaxDur time.Duration, shutdownMaxDur time.Duration, startupFns []func(ctx context.Context) error, shutdownFns []func(ctx context.Context) error) *ExitReason {
+func Run(startupMaxDur time.Duration, shutdownMaxDur time.Duration, startupFns []func(ctx context.Context) error, shutdownFns []func(ctx context.Context) error) *ExitReason {
 	er := &ExitReason{}
 	fnErrs := make(chan error)
 
-	// Startup the application and exit early if any errors occur.
+	// Start the application and exit early if any errors occur.
 	stCtx, stCancel := context.WithTimeout(context.Background(), startupMaxDur)
 
 	go func() {
@@ -63,7 +65,7 @@ func Start(startupMaxDur time.Duration, shutdownMaxDur time.Duration, startupFns
 
 	// Monitor the application/OS and document why we're shutting down.
 	osSig := make(chan os.Signal, 1)
-	signal.Notify(osSig, os.Interrupt)
+	signal.Notify(osSig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	select {
 	case er.RuntimeErr = <-rte:
@@ -76,9 +78,7 @@ func Start(startupMaxDur time.Duration, shutdownMaxDur time.Duration, startupFns
 
 	go func() {
 		for _, fn := range shutdownFns {
-			if err := fn(sdCtx); err != nil {
-				fnErrs <- err
-			}
+			fnErrs <- fn(sdCtx)
 		}
 	}()
 
