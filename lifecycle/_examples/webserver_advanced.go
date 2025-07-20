@@ -4,7 +4,7 @@ package exadv
 	This code can be copied and ran. It will start an HTTP server at localhost:8080.
 	Requests at any path except /error will return 200, echo that path, and mock batch processing with duration mockDbBatchSize * durPerReq.
 	If the path is /error the server will report an error and the application will shut down.
-	When ending the application with ctrl+c, any remaining batch items will be processed and logged as normal (unless timed out at shutdownMaxDur), despite the SIGINT command produced by ctrl+c.
+	If the application is ended with ctrl+c, any remaining batch items will be processed and logged as normal (unless timed out at shutdownMaxDur), despite the SIGINT command produced by ctrl+c.
 */
 
 import (
