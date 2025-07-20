@@ -10,4 +10,4 @@ A webserver could configure Lifecycle to the following or any other variation of
 5) Shutdown the server to stop serving live traffic.
 6) Shutdown the async process, making sure that the last batch of stuff in the async process gets handled.
 
-See /examples for more.
+See /_examples for more.

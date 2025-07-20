@@ -1,6 +1,4 @@
-//go:build simple
-
-package examples
+package exsimple
 
 /*
 	This code can be copied and ran. It will start an HTTP server at localhost:8080.
