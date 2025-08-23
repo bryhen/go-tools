@@ -15,6 +15,8 @@ type ExitReason struct {
 	ShutdownErrs []error
 }
 
+type LifecycleFn = func(ctx context.Context) error
+
 var rte = make(chan error, 1)
 
 // Helps run an application by handling graceful startup and shutdown.
@@ -31,9 +33,9 @@ var rte = make(chan error, 1)
 //   - Signals monitored are SIGINT and SIGTERM.
 //
 // 3. Run the shutdown functions sequentially up to the shutdownMaxDur duration.
-func Run(startupMaxDur time.Duration, shutdownMaxDur time.Duration, startupFns []func(ctx context.Context) error, shutdownFns []func(ctx context.Context) error) *ExitReason {
+func Run(startupMaxDur time.Duration, shutdownMaxDur time.Duration, startupFns []LifecycleFn, shutdownFns []LifecycleFn) *ExitReason {
 	er := &ExitReason{}
-	fnErrs := make(chan error)
+	fnErrs := make(chan error, 1)
 
 	// Start the application and exit early if any errors occur.
 	stCtx, stCancel := context.WithTimeout(context.Background(), startupMaxDur)

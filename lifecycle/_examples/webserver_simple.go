@@ -35,6 +35,7 @@ var (
 	// EXAMPLE CODE: An http server
 	server = &http.Server{
 		Addr: ":8080",
+		// EXAMPLE CODE: An echo or error handler.
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/error" {
 				// If the path is /error, shut down the application
@@ -49,6 +50,7 @@ var (
 	}
 )
 
+// EXAMPLE CODE: A main function.
 func main() {
 
 	fmt.Println("Starting the application...")
