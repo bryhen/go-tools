@@ -15,13 +15,11 @@ type ExitReason struct {
 	ShutdownErrs []error
 }
 
-type LifecycleFn = func(ctx context.Context) error
-
 var rte = make(chan error, 1)
 
 // Helps run an application by handling graceful startup and shutdown.
 //
-// Returns the ExitReason struct which contains information about why the program exited.
+// Returns a guaranteed non-nil ExitReason struct which contains information about why the program exited.
 //
 // This function will:
 //
@@ -33,23 +31,20 @@ var rte = make(chan error, 1)
 //   - Signals monitored are SIGINT and SIGTERM.
 //
 // 3. Run the shutdown functions sequentially up to the shutdownMaxDur duration.
-func Run(startupMaxDur time.Duration, shutdownMaxDur time.Duration, startupFns []LifecycleFn, shutdownFns []LifecycleFn) *ExitReason {
+func Run(startupMaxDur time.Duration, shutdownMaxDur time.Duration, startupFns []func(ctx context.Context) error, shutdownFns []func(ctx context.Context) error) *ExitReason {
 	er := &ExitReason{}
 	fnErrs := make(chan error, 1)
 
 	// Start the application and exit early if any errors occur.
 	stCtx, stCancel := context.WithTimeout(context.Background(), startupMaxDur)
-
+	defer stCancel()
 	go func() {
-
 		for _, fn := range startupFns {
 			if err := fn(stCtx); err != nil {
 				fnErrs <- err
-				stCancel()
 				return
 			}
 		}
-
 		fnErrs <- nil
 	}()
 
@@ -58,8 +53,6 @@ func Run(startupMaxDur time.Duration, shutdownMaxDur time.Duration, startupFns [
 	case <-stCtx.Done():
 		er.StartupErr = stCtx.Err()
 	}
-
-	stCancel()
 
 	if er.StartupErr != nil {
 		return er
@@ -77,7 +70,6 @@ func Run(startupMaxDur time.Duration, shutdownMaxDur time.Duration, startupFns [
 	// Shutdown the application and collect all the errors that occurred during shutdown.
 	sdCtx, sdCancel := context.WithTimeout(context.Background(), shutdownMaxDur)
 	defer sdCancel()
-
 	go func() {
 		for _, fn := range shutdownFns {
 			fnErrs <- fn(sdCtx)
