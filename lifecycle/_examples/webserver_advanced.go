@@ -78,28 +78,11 @@ var (
 )
 
 func main() {
-
 	fmt.Println("Starting the application...")
-	exitReason := lifecycle.Run(startupMaxDur, shutdownMaxDur, startupFns, shutdownFns)
-	if exitReason.StartupErr != nil {
-		// A startup function returned an error therefore the application should not ever run.
-		fmt.Printf("Failed to start: %+v\n", exitReason.StartupErr)
-	}
 
-	if exitReason.RuntimeErr != nil {
-		// The application ran and encountered an error that was reported by lifecycle.RuntimeErr().
-		fmt.Printf("Runtime error triggered shutdown: %+v\n", exitReason.RuntimeErr)
-	} else if exitReason.OsSignal != nil {
-		// The application ran and received an OS shutdown signal.
-		fmt.Printf("OS signal triggered shutdown: %+v\n", exitReason.OsSignal)
-	}
+	exitReason := lifecycle.Run(startupMaxDur, shutdownMaxDur, startupFns, shutdownFns).JSONIndent("", "\t")
 
-	if len(exitReason.ShutdownErrs) > 0 {
-		// 1 or more shutdown functions errored.
-		fmt.Printf("Shutdown process errors: %+v\n", exitReason.ShutdownErrs)
-	}
-
-	fmt.Println("Exiting the application.")
+	fmt.Printf("Exiting the application: %+v", exitReason)
 }
 
 func startDB(ctx context.Context) error {

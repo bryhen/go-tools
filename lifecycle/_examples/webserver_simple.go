@@ -1,4 +1,4 @@
-package exsimple
+package main
 
 /*
 	This code can be copied and ran. It will start an HTTP server at localhost:8080.
@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -43,8 +44,9 @@ var (
 				lifecycle.RuntimeErr(fmt.Errorf("/error path was hit"))
 				w.Write([]byte("Server shutting down because /error was hit."))
 			} else {
-				// If it isn't /error, echo the path
-				w.Write([]byte(r.URL.Path))
+				// If it isn't /error, echo the body
+				w.Write([]byte("Look it works! The body you sent is below:\n\n"))
+				io.Copy(w, r.Body)
 			}
 		}),
 	}
@@ -52,29 +54,11 @@ var (
 
 // EXAMPLE CODE: A main function.
 func main() {
-
 	fmt.Println("Starting the application...")
-	exitReason := lifecycle.Run(startupMaxDur, shutdownMaxDur, startupFns, shutdownFns)
 
-	if exitReason.StartupErr != nil {
-		// A startup function returned an error therefore the application should not ever run.
-		fmt.Printf("Failed to start: %+v\n", exitReason.StartupErr)
-	}
+	exitReason := lifecycle.Run(startupMaxDur, shutdownMaxDur, startupFns, shutdownFns).JSONIndent("", "\t")
 
-	if exitReason.RuntimeErr != nil {
-		// The application ran and encountered an error that was reported by lifecycle.RuntimeErr().
-		fmt.Printf("Runtime error triggered shutdown: %+v\n", exitReason.RuntimeErr)
-	} else if exitReason.OsSignal != nil {
-		// The application ran and received an OS shutdown signal.
-		fmt.Printf("OS signal triggered shutdown: %+v\n", exitReason.OsSignal)
-	}
-
-	if len(exitReason.ShutdownErrs) > 0 {
-		// 1 or more shutdown functions errored.
-		fmt.Printf("Shutdown process errors: %+v\n", exitReason.ShutdownErrs)
-	}
-
-	fmt.Println("Exiting the application.")
+	fmt.Printf("Exiting the application: %+v", exitReason)
 }
 
 func startServer(ctx context.Context) error {

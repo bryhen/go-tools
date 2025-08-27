@@ -19,7 +19,7 @@ var rte = make(chan error, 1)
 
 // Helps run an application by handling graceful startup and shutdown.
 //
-// Returns a guaranteed non-nil ExitReason struct which contains information about why the program exited.
+// Returns the guaranteed non-nil ExitReason struct which contains information about why the program exited.
 //
 // This function will:
 //
@@ -37,14 +37,17 @@ func Run(startupMaxDur time.Duration, shutdownMaxDur time.Duration, startupFns [
 
 	// Start the application and exit early if any errors occur.
 	stCtx, stCancel := context.WithTimeout(context.Background(), startupMaxDur)
-	defer stCancel()
+
 	go func() {
+
 		for _, fn := range startupFns {
 			if err := fn(stCtx); err != nil {
 				fnErrs <- err
+				stCancel()
 				return
 			}
 		}
+
 		fnErrs <- nil
 	}()
 
@@ -53,6 +56,8 @@ func Run(startupMaxDur time.Duration, shutdownMaxDur time.Duration, startupFns [
 	case <-stCtx.Done():
 		er.StartupErr = stCtx.Err()
 	}
+
+	stCancel()
 
 	if er.StartupErr != nil {
 		return er
@@ -70,6 +75,7 @@ func Run(startupMaxDur time.Duration, shutdownMaxDur time.Duration, startupFns [
 	// Shutdown the application and collect all the errors that occurred during shutdown.
 	sdCtx, sdCancel := context.WithTimeout(context.Background(), shutdownMaxDur)
 	defer sdCancel()
+
 	go func() {
 		for _, fn := range shutdownFns {
 			fnErrs <- fn(sdCtx)
